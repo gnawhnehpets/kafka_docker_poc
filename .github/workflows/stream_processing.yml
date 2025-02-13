@@ -26,14 +26,16 @@ jobs:
         run: |
           echo "GitHub SHA: ${{ github.sha }}"
           echo "Changed files:"
-          git diff-tree --no-commit-id --name-only -r ${{ github.sha }}
+          git log -m -1 --name-only --pretty=format: ${{ github.sha }}
+        
 
       - name: Send File Info to Kafka
         run: |
-          FILE_PATH=$(git diff-tree --no-commit-id --name-only -r ${{ github.sha }} | grep '^data/' || true)
+          FILE_PATH=$(git log -m -1 --name-only --pretty=format: ${{ github.sha }} | grep '^data/' || true)
           if [ ! -z "$FILE_PATH" ]; then
             echo "New file detected: $FILE_PATH"
             echo "{\"filename\": \"$FILE_PATH\", \"repo\": \"${{ github.repository }}\"}" | /opt/kafka/bin/kafka-console-producer.sh --broker-list ${{ secrets.KAFKA_BROKER }} --topic file-events
           else
             echo "No new files detected in the data/ directory."
           fi
+        
