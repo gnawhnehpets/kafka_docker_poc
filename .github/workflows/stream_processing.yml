@@ -5,7 +5,7 @@ on:
     paths:
       - 'data/**'  # Watches the "data" directory for new file commits
     branches:
-      - dev  # trigger only on the main branch
+      - main  # Trigger only on the main branch
 
 jobs:
   notify-kafka:
@@ -14,10 +14,18 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v3
 
-      - name: Send file info to Kafka
+      - name: Install Kafka CLI
+        run: |
+          wget https://archive.apache.org/dist/kafka/3.5.1/kafka_2.13-3.5.1.tgz
+          tar -xvzf kafka_2.13-3.5.1.tgz
+          mv kafka_2.13-3.5.1 /opt/kafka
+          echo "export PATH=/opt/kafka/bin:$PATH" >> ~/.bashrc
+          source ~/.bashrc
+
+      - name: Send File Info to Kafka
         run: |
           FILE_PATH=$(git diff-tree --no-commit-id --name-only -r ${{ github.sha }} | grep '^data/')
           if [ -n "$FILE_PATH" ]; then
             echo "New file detected: $FILE_PATH"
-            echo "{\"filename\": \"$FILE_PATH\", \"repo\": \"${{ github.repository }}\"}" | kafka-console-producer.sh --broker-list ${{ secrets.KAFKA_BROKER }} --topic file-events
+            echo "{\"filename\": \"$FILE_PATH\", \"repo\": \"${{ github.repository }}\"}" | /opt/kafka/bin/kafka-console-producer.sh --broker-list ${{ secrets.KAFKA_BROKER }} --topic file-events
           fi
