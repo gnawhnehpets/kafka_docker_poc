@@ -1,0 +1,23 @@
+name: Stream Processing Pipeline
+
+on:
+  push:
+    paths:
+      - 'data/**'  # Watches the "data" directory for new file commits
+    branches:
+      - dev  # trigger only on the main branch
+
+jobs:
+  notify-kafka:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+
+      - name: Send file info to Kafka
+        run: |
+          FILE_PATH=$(git diff-tree --no-commit-id --name-only -r ${{ github.sha }} | grep '^data/')
+          if [ -n "$FILE_PATH" ]; then
+            echo "New file detected: $FILE_PATH"
+            echo "{\"filename\": \"$FILE_PATH\", \"repo\": \"${{ github.repository }}\"}" | kafka-console-producer.sh --broker-list ${{ secrets.KAFKA_BROKER }} --topic file-events
+          fi
